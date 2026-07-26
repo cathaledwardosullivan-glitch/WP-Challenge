@@ -1,7 +1,10 @@
-const CACHE = 'woodpecker-v2';
-const ASSETS = ['./', './index.html', './data.enc', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
+const CACHE = 'woodpecker-v3';
+const ASSETS = ['./', './index.html', './data.enc', './data.enc.txt',
+  './manifest.webmanifest', './manifest.webmanifest.txt', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c =>
+    Promise.allSettled(ASSETS.map(a => c.add(a)))   // tolerate whichever variants exist
+  ).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys =>

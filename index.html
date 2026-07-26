@@ -3683,14 +3683,21 @@ async function tryDecrypt(buf, pass){
 async function boot(){
   if('serviceWorker' in navigator && location.protocol.startsWith('http')){
     navigator.serviceWorker.register('sw.js').catch(()=>{});
-  }
-  let buf;
+  // manifest fallback if the file was renamed to .txt on upload
   try {
-    const res = await fetch('data.enc');
-    if(!res.ok) throw new Error('fetch failed');
-    buf = await res.arrayBuffer();
-  } catch(e){
-    document.getElementById('passErr').textContent = 'Could not load data.enc — is the file next to index.html?';
+    const mf = document.querySelector('link[rel="manifest"]');
+    fetch('manifest.webmanifest').then(r => { if(!r.ok) mf.href = 'manifest.webmanifest.txt'; }).catch(()=>{ mf.href = 'manifest.webmanifest.txt'; });
+  } catch(e){}
+  }
+  let buf = null;
+  for(const name of ['data.enc', 'data.enc.txt']){
+    try {
+      const res = await fetch(name);
+      if(res.ok){ buf = await res.arrayBuffer(); break; }
+    } catch(e){}
+  }
+  if(!buf){
+    document.getElementById('passErr').textContent = 'Could not load the puzzle data file — is data.enc (or data.enc.txt) next to index.html?';
     return;
   }
   let stored = null;
