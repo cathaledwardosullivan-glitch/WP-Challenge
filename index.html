@@ -184,6 +184,7 @@ dialog p{font-size:14px; color:var(--ink-2); line-height:1.5}
 <main id="viewSolve">
   <div class="banner hiddenv" id="storageWarn">Progress can’t be saved in this preview. Download the file and open it in your browser to keep your progress.</div>
   <div class="banner hiddenv" id="cycleDone"></div>
+  <div class="banner hiddenv" id="deadlineBanner"></div>
   <div class="card">
     <div class="meta-row">
       <span class="pnum" id="pNum">#1</span>
@@ -4012,16 +4013,52 @@ function renderCycleProgress(){
   const list = setList();
   const done = list.filter(n=>rec(n)).length;
   $('cycleFill').style.width = list.length ? (100*done/list.length)+'%' : '0';
-  $('cycleProgTxt').textContent = done + ' / ' + list.length + ' in cycle ' + S.cycle;
+  const di = cycleDayInfo(S.cycle);
+  $('cycleProgTxt').textContent = done + ' / ' + list.length + ' in cycle ' + S.cycle +
+    (di ? ' \u00b7 day ' + di.day + ' of ' + di.target : '');
   $('cycleChip').textContent = 'Cycle ' + S.cycle + '/' + CYCLES;
+  const complete = list.length && done===list.length;
+  // 4-week deadline banner (cycle 1): offer to close the cycle, fixing the set to what's solved
+  const dl = $('deadlineBanner');
+  if(dl){
+    const expired = di && di.day > di.target;
+    const show = expired && !complete && S.cycle===1 && !S.deadlineDismissed1 && done > 0;
+    dl.classList.toggle('hiddenv', !show);
+    if(show){
+      dl.innerHTML = '<b>' + di.target + ' days are up for cycle 1.</b> The book\u2019s advice: the ' + done +
+        ' exercises you\u2019ve solved now become your set for the remaining cycles. ' +
+        '<button class="big-btn primary" id="closeCycleBtn">Close cycle 1 \u2014 set = ' + done + ' puzzles</button>' +
+        '<button class="big-btn" id="dismissDeadlineBtn">Keep going anyway</button>';
+      $('closeCycleBtn').onclick = ()=>{
+        let hi = 0;
+        for(const n in S.rec){ if(S.rec[n][1] && +n > hi) hi = +n; }
+        if(hi > 0){ S.set.to = hi; }
+        S.cycle = 2; save();
+        showPuzzle(firstDue()); renderAll();
+      };
+      $('dismissDeadlineBtn').onclick = ()=>{ S.deadlineDismissed1 = true; save(); renderCycleProgress(); };
+    }
+  }
   const bn = $('cycleDone');
-  if(list.length && done===list.length){
+  if(complete){
     bn.classList.remove('hiddenv');
     bn.innerHTML = '<b>Cycle ' + S.cycle + ' complete!</b> ' +
       (S.cycle<CYCLES ? 'Take at least a clear day off, then start cycle ' + (S.cycle+1) + ' — aim for half the days. <button class="big-btn primary" id="nextCycleBtn">Start cycle ' + (S.cycle+1) + '</button>'
        : 'Seven cycles — the Woodpecker Method is complete. Time to celebrate!');
     const b = $('nextCycleBtn'); if(b) b.onclick = ()=>{ S.cycle++; save(); showPuzzle(firstDue()); renderAll(); };
   } else bn.classList.add('hiddenv');
+}
+const CYCLE_TARGET_DAYS = [28, 14, 7, 4, 2, 1, 1];
+function cycleFirstTs(c){
+  let first = null;
+  for(const n in S.rec){ const r = S.rec[n][c]; if(r && r.t && (first===null || r.t < first)) first = r.t; }
+  return first;
+}
+function cycleDayInfo(c){
+  const first = cycleFirstTs(c);
+  if(!first) return null;
+  const day = Math.floor((Date.now() - first) / 86400000) + 1;
+  return { day, target: CYCLE_TARGET_DAYS[c-1] || 1 };
 }
 function firstDue(){ const l=setList(); for(const n of l) if(!rec(n)) return n; return l[0]||1; }
 function nextDue(after){
