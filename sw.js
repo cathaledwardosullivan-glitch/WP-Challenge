@@ -1,4 +1,4 @@
-const CACHE = 'woodpecker-v3';
+const CACHE = 'woodpecker-v4';
 const ASSETS = ['./', './index.html', './data.enc', './data.enc.txt',
   './manifest.webmanifest', './manifest.webmanifest.txt', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
